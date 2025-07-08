@@ -85,10 +85,10 @@ instance Storable HipArrayDescriptor where
 {#fun hipDeviceSynchronize as ^
   {} -> `HipError'#} 
 
-{#fun hipMalloc as ^
+{#fun hipMalloc as hipMallocRaw
   {alloca- `Ptr ()' peek*, `CSize'} -> `HipError'#} 
 
-{#fun hipFree as ^
+{#fun hipFree as hipFreeRaw
   {`Ptr ()'} -> `HipError'#} 
 
 {#fun hipMemcpy as ^

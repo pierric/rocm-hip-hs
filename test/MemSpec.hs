@@ -1,13 +1,18 @@
 module MemSpec where
 
 import Control.Monad
+import Data.Int
+import Foreign.Marshal.Utils
+import Foreign.Marshal.Alloc
+import Foreign.Ptr
+import Foreign.Storable
 import Text.Printf
 import Test.Hspec
 import ROCm.HIP
 
 spec :: Spec
 spec = do
-  describe "memory" $ do
+  describe "memory alloc/free" $ do
     it "allocate/free small" $ do
       ptr <- hipMalloc 10
       hipFree ptr
@@ -15,6 +20,27 @@ spec = do
     it "allocate/free large" $ do
       ptr <- hipMalloc 1000000
       hipFree ptr
+
+  describe "memory copy host <> device" $ do
+    it "host >> device >> host" $ do
+      withHipDeviceMem 4 $ \dptr -> do
+        with (99::Int32) $ \hptr -> do
+          hipMemcpyHtoD dptr (castPtr hptr) 4
+          allocaBytes 4 $ \hptr2 -> do
+            hipMemcpyDtoH (castPtr hptr2) dptr 4 
+            val <- peek hptr2
+            (val :: Int32) `shouldBe` 99
+
+    it "host >> device >> device >> host" $ do
+      withHipDeviceMem 4 $ \dptr -> do
+        withHipDeviceMem 4 $ \dptr2 -> do
+          with (999::Int32) $ \hptr -> do
+            hipMemcpyHtoD dptr (castPtr hptr) 4
+            hipMemcpyDtoD dptr2 dptr 4
+            allocaBytes 4 $ \hptr2 -> do
+              hipMemcpyDtoH (castPtr hptr2) dptr2 4 
+              val <- peek hptr2
+              (val :: Int32) `shouldBe` 999
 
   describe "array" $ do
     let asInt a = fromIntegral a :: Int
