@@ -1,7 +1,7 @@
 #include "hip/hip_runtime_api.h"
 #include "hip_runtime_hs.h"
 
-module ROCm.HIP.Internal where
+module ROCm.HIP.Runtime where
 
 import Foreign.C.Types
 import Foreign.Marshal.Array (withArray)
@@ -65,7 +65,7 @@ instance Storable HipArrayDescriptor where
 
 {#pointer *HIP_ARRAY_DESCRIPTOR as HipArrayDescriptorPtr -> HipArrayDescriptor#}
 
-{#enum hipMemcpyKind as HipMemcpyKind {underscoreToCase} deriving (Eq)#}
+{#enum hipMemcpyKind as HipMemcpyKind {upcaseFirstLetter} deriving (Eq)#}
 
 {#pointer hipDeviceptr_t as HipDeviceptr newtype#}
 

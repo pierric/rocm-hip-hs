@@ -42,6 +42,20 @@ spec = do
               val <- peek hptr2
               (val :: Int32) `shouldBe` 999
 
+  describe "memory copy async" $ do
+    it "host >> device >> device >> host" $ do
+      stream <- hipStreamCreate
+      withHipDeviceMem 4 $ \dptr -> do
+        withHipDeviceMem 4 $ \dptr2 -> do
+          with (999::Int32) $ \hptr -> do
+            hipMemcpyWithStream (devicePtrAsRaw dptr) (castPtr hptr) 4 HipMemcpyHostToDevice stream
+            hipMemcpyWithStream (devicePtrAsRaw dptr2) (devicePtrAsRaw dptr) 4 HipMemcpyDeviceToDevice stream
+            allocaBytes 4 $ \hptr2 -> do
+              hipMemcpyWithStream (castPtr hptr2) (devicePtrAsRaw dptr2) 4 HipMemcpyDeviceToDevice stream
+              hipStreamSynchronize stream
+              val <- peek hptr2
+              (val :: Int32) `shouldBe` 999
+
   describe "array" $ do
     let asInt a = fromIntegral a :: Int
     let size = [8,128,1024]

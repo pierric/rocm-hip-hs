@@ -11,6 +11,7 @@ module ROCm.HIP (
     hipMemcpyHtoD,
     hipMemcpyDtoH,
     hipMemcpyDtoD,
+    hipMemcpyWithStream,
     hipArrayCreate,
     hipStreamCreate,
     hipStreamSynchronize,
@@ -21,52 +22,53 @@ module ROCm.HIP (
     HipError(..),
     HipArrayFormat(..),
     HipArrayDescriptor(..),
+    HipMemcpyKind(..),
     withHipDeviceMem,
     devicePtrAsRaw,
 ) where
 
-import qualified ROCm.HIP.Internal as Internal
-import ROCm.HIP.Internal (HipError(..), HipArrayFormat(..), HipArrayDescriptor(..))
+import qualified ROCm.HIP.Runtime as Runtime
+import ROCm.HIP.Runtime (HipError(..), HipArrayFormat(..), HipArrayDescriptor(..), HipMemcpyKind(..))
 import ROCm.HIP.TH
 import Control.Exception (bracket)
 import Foreign.Ptr (Ptr, castPtr)
 import Foreign.C.Types (CSize)
 
-$(checked 'Internal.hipGetDeviceCount)
-$(checked 'Internal.hipGetDevice)
-$(checked 'Internal.hipSetDevice)
-$(checked 'Internal.hipDeviceSynchronize)
+$(checked 'Runtime.hipGetDeviceCount)
+$(checked 'Runtime.hipGetDevice)
+$(checked 'Runtime.hipSetDevice)
+$(checked 'Runtime.hipDeviceSynchronize)
 
-$(checked 'Internal.hipMallocRaw)
+$(checked 'Runtime.hipMallocRaw)
 
-hipMalloc :: CSize -> IO Internal.HipDeviceptr
+hipMalloc :: CSize -> IO Runtime.HipDeviceptr
 hipMalloc size = do
   ptr <- hipMallocRaw size
-  return $ Internal.HipDeviceptr $ castPtr ptr
+  return $ Runtime.HipDeviceptr $ castPtr ptr
 
-$(checked 'Internal.hipFreeRaw)
+$(checked 'Runtime.hipFreeRaw)
 
-hipFree :: Internal.HipDeviceptr -> IO ()
+hipFree :: Runtime.HipDeviceptr -> IO ()
 hipFree = hipFreeRaw . devicePtrAsRaw
 
-withHipDeviceMem :: CSize -> (Internal.HipDeviceptr -> IO a) -> IO a
+withHipDeviceMem :: CSize -> (Runtime.HipDeviceptr -> IO a) -> IO a
 withHipDeviceMem size = bracket (hipMalloc size) (hipFree)
 
-devicePtrAsRaw :: Internal.HipDeviceptr -> Ptr ()
-devicePtrAsRaw (Internal.HipDeviceptr ptr) = castPtr ptr
+devicePtrAsRaw :: Runtime.HipDeviceptr -> Ptr ()
+devicePtrAsRaw (Runtime.HipDeviceptr ptr) = castPtr ptr
 
-$(checked 'Internal.hipMemcpy)
-$(checked 'Internal.hipMemcpyWithStream)
-$(checked 'Internal.hipMemcpyHtoD)
-$(checked 'Internal.hipMemcpyDtoH)
-$(checked 'Internal.hipMemcpyDtoD)
-$(checked 'Internal.hipArrayCreate)
+$(checked 'Runtime.hipMemcpy)
+$(checked 'Runtime.hipMemcpyWithStream)
+$(checked 'Runtime.hipMemcpyHtoD)
+$(checked 'Runtime.hipMemcpyDtoH)
+$(checked 'Runtime.hipMemcpyDtoD)
+$(checked 'Runtime.hipArrayCreate)
 
-$(checked 'Internal.hipStreamCreate)
-$(checked 'Internal.hipStreamSynchronize)
+$(checked 'Runtime.hipStreamCreate)
+$(checked 'Runtime.hipStreamSynchronize)
 
-$(checked 'Internal.hipModuleLoad)
-$(checked 'Internal.hipModuleGetFunction)
-$(checked 'Internal.hipModuleLaunchKernel)
+$(checked 'Runtime.hipModuleLoad)
+$(checked 'Runtime.hipModuleGetFunction)
+$(checked 'Runtime.hipModuleLaunchKernel)
 
-$(checked 'Internal.hipLaunchKernel)
+$(checked 'Runtime.hipLaunchKernel)
