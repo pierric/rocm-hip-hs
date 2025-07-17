@@ -25,14 +25,22 @@ module ROCm.HIP (
     HipMemcpyKind(..),
     withHipDeviceMem,
     devicePtrAsRaw,
+    HipDeviceptr,
+    Dim3(..),
+    KernelArg(..),
 ) where
 
 import qualified ROCm.HIP.Runtime as Runtime
-import ROCm.HIP.Runtime (HipError(..), HipArrayFormat(..), HipArrayDescriptor(..), HipMemcpyKind(..))
+import ROCm.HIP.Runtime (HipError(..), HipArrayFormat(..), HipArrayDescriptor(..), HipMemcpyKind(..), HipDeviceptr, Dim3(..))
 import ROCm.HIP.TH
 import Control.Exception (bracket)
-import Foreign.Ptr (Ptr, castPtr)
+import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.C.Types (CSize)
+import Foreign.Storable
+import Data.ByteString (ByteString)
+import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import Blaze.ByteString.Builder (toByteString, fromStorable, fromWord8)
+import Data.Int
 
 $(checked 'Runtime.hipGetDeviceCount)
 $(checked 'Runtime.hipGetDevice)
@@ -69,6 +77,38 @@ $(checked 'Runtime.hipStreamSynchronize)
 
 $(checked 'Runtime.hipModuleLoad)
 $(checked 'Runtime.hipModuleGetFunction)
-$(checked 'Runtime.hipModuleLaunchKernel)
+$(checked 'Runtime.hipModuleLaunchKernelRaw)
 
 $(checked 'Runtime.hipLaunchKernel)
+
+data KernelArg = KI Int32 | KF Float | KP HipDeviceptr
+
+pack :: [KernelArg] -> ByteString
+pack args = do
+  let alignmentFinal = foldr lcm 1 (map alignmentK args)
+  toByteString $ mconcat $ concatMap (build alignmentFinal) args
+
+  where
+  alignmentK (KI v) = alignment v
+  alignmentK (KF v) = alignment v
+  alignmentK (KP v) = alignment v
+
+  build a (KI v) = [fromStorable v] ++ padding (a - sizeOf v)
+  build a (KF v) = [fromStorable v] ++ padding (a - sizeOf v)
+  build a (KP v) = [fromStorable v] ++ padding (a - sizeOf v)
+
+  padding n = replicate n (fromWord8 0)
+
+hipModuleLaunchKernel :: Runtime.HipFunction
+                      -> Dim3
+                      -> Dim3
+                      -> Int
+                      -> Maybe Runtime.HipStream
+                      -> [KernelArg]
+                      -> IO ()
+hipModuleLaunchKernel func grid block shm stream args = do
+  let Dim3 gridX gridY gridZ = grid
+      Dim3 blockX blockY blockZ = block
+  unsafeUseAsCStringLen (pack args) $ \(ptr, len) -> do
+    Runtime.withParamConfig (castPtr ptr) len $ \param -> do
+      hipModuleLaunchKernelRaw func gridX gridY gridZ blockX blockY blockZ (fromIntegral shm) stream nullPtr param

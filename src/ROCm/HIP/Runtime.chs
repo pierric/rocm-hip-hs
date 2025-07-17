@@ -1,3 +1,5 @@
+{-# LANGUAGE StandaloneDeriving, GeneralizedNewtypeDeriving #-}
+
 #include "hip/hip_runtime_api.h"
 #include "hip_runtime_hs.h"
 
@@ -9,6 +11,9 @@ import Foreign.Marshal.Alloc (alloca)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr
 import Foreign.Storable (peek, Storable(..))
+import Data.ByteString (ByteString)
+import Data.ByteString.Unsafe (unsafeUseAsCString)
+import Blaze.ByteString.Builder (toByteString, fromStorable)
 
 {#typedef size_t CSize#}
 
@@ -69,6 +74,8 @@ instance Storable HipArrayDescriptor where
 
 {#pointer hipDeviceptr_t as HipDeviceptr newtype#}
 
+deriving instance Storable HipDeviceptr
+
 {#pointer hipStream_t as HipStream foreign newtype#}
 
 {#pointer hipArray_t as HipArray foreign newtype#}
@@ -126,12 +133,12 @@ instance Storable HipArrayDescriptor where
 {#fun hipModuleGetFunction as hipModuleGetFunction
   {alloca- `HipFunction' peek*, `HipModule', `String'} -> `HipError'#} 
 
-{#fun hipModuleLaunchKernel as hipModuleLaunchKernel
+{#fun hipModuleLaunchKernel as hipModuleLaunchKernelRaw
   {`HipFunction',
   `CUInt', `CUInt', `CUInt',
   `CUInt', `CUInt', `CUInt',
-  `Int', `HipStream',
-   withArray* `[Ptr ()]', withArray* `[Ptr ()]'} -> `HipError'#}
+  `CUInt', withMaybeHipStream* `Maybe HipStream',
+  id `Ptr (Ptr ())', id `Ptr (Ptr ())'} -> `HipError'#}
 
 {#fun hipLaunchKernel_wrapped as hipLaunchKernel
   {`Ptr ()', with* `Dim3', with* `Dim3', withArray* `[Ptr ()]', `CSize', `HipStream'} -> `HipError'#}
@@ -154,3 +161,18 @@ peekHipObject finalizer wrapper ptr = do
 peekHipModule = peekHipObject hipModuleUnload HipModule
 peekHipStream = peekHipObject hipStreamDestroy HipStream
 peekHipArray = peekHipObject hipArrayDestroy HipArray
+
+withMaybeHipStream :: Maybe HipStream -> (Ptr HipStream -> IO a) -> IO a
+withMaybeHipStream Nothing act = act nullPtr
+withMaybeHipStream (Just s) act = withHipStream s act
+
+withParamConfig :: Ptr () -> Int -> (Ptr (Ptr ())  -> IO a) -> IO a
+withParamConfig argptr argsize act = with argsize $ \argsizeptr -> do
+  let hip_launch_param_buffer_ptr = 1 :: WordPtr
+      hip_launch_param_buffer_size = 2 :: WordPtr
+      hip_launch_param_end = 3 :: WordPtr
+  let comps = [wordPtrToPtr hip_launch_param_buffer_ptr, argptr,
+               wordPtrToPtr hip_launch_param_buffer_size, castPtr argsizeptr,
+               wordPtrToPtr hip_launch_param_end] :: [Ptr ()]
+      bs = toByteString $ mconcat $ map fromStorable comps
+  unsafeUseAsCString bs (act . castPtr)
