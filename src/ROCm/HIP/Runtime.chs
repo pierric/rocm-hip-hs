@@ -12,7 +12,7 @@ import Foreign.Marshal.Utils (with)
 import Foreign.Ptr
 import Foreign.Storable (peek, Storable(..))
 import Data.ByteString (ByteString)
-import Data.ByteString.Unsafe (unsafeUseAsCString)
+import Data.ByteString.Unsafe (unsafeUseAsCStringLen, unsafeUseAsCString)
 import Blaze.ByteString.Builder (toByteString, fromStorable)
 
 {#typedef size_t CSize#}
@@ -95,8 +95,8 @@ deriving instance Storable HipDeviceptr
 {#fun hipMalloc as hipMallocRaw
   {alloca- `Ptr ()' peek*, `CSize'} -> `HipError'#} 
 
-{#fun hipFree as hipFreeRaw
-  {`Ptr ()'} -> `HipError'#} 
+{#fun hipFree as hipFree
+  {devicePtrAsRaw `HipDeviceptr'} -> `HipError'#} 
 
 {#fun hipMemcpy as ^
   {`Ptr ()', `Ptr ()', `CSize', `HipMemcpyKind'} -> `HipError'#} 
@@ -112,6 +112,12 @@ deriving instance Storable HipDeviceptr
 
 {#fun hipMemcpyDtoD as ^
   {`HipDeviceptr', `HipDeviceptr', `CSize'} -> `HipError'#} 
+
+{#fun hipMemPtrGetInfo as ^
+  {devicePtrAsRaw `HipDeviceptr', alloca- `CSize' peek*} -> `HipError'#} 
+
+{#fun hipMemGetInfo as ^
+  {alloca- `CSize' peek*, alloca- `CSize' peek*} -> `HipError'#} 
 
 {#fun hipArrayCreate as ^
   {alloca- `HipArray' peekHipArray*, with* `HipArrayDescriptor'} -> `HipError'#}
@@ -152,6 +158,9 @@ foreign import ccall safe "Internal.chs.h &hipStreamDestroy"
 foreign import ccall safe "Internal.chs.h &hipArrayDestroy"
   hipArrayDestroy :: FunPtr (Ptr HipArray -> IO ())
 
+foreign import ccall safe "Internal.chs.h &hipFree"
+  hipFreeAsFunPtr :: FunPtr (Ptr HipDeviceptr -> IO ())
+
 peekHipObject :: FunPtr (Ptr a -> IO ()) -> (C2HSImp.ForeignPtr a -> a) -> Ptr (Ptr a) -> IO a
 peekHipObject finalizer wrapper ptr = do
   p <- peek ptr
@@ -176,3 +185,10 @@ withParamConfig argptr argsize act = with argsize $ \argsizeptr -> do
                wordPtrToPtr hip_launch_param_end] :: [Ptr ()]
       bs = toByteString $ mconcat $ map fromStorable comps
   unsafeUseAsCString bs (act . castPtr)
+
+
+devicePtrAsRaw :: HipDeviceptr -> Ptr ()
+devicePtrAsRaw (HipDeviceptr ptr) = castPtr ptr
+
+unsafeRawAsDeviceptr :: Ptr () -> HipDeviceptr
+unsafeRawAsDeviceptr ptr = HipDeviceptr (castPtr ptr)

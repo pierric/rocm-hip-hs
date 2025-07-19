@@ -1,12 +1,6 @@
 module ModuleSpec where
 
 import Control.Monad
-import Data.Int
-import Foreign.Marshal.Utils
-import Foreign.Marshal.Alloc
-import Foreign.Ptr
-import Foreign.Storable
-import Text.Printf
 import Test.Hspec
 import System.Posix.Files (fileExist)
 import System.Process (callCommand)

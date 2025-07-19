@@ -56,6 +56,17 @@ spec = do
               val <- peek hptr2
               (val :: Int32) `shouldBe` 999
 
+  describe "memory info" $ do
+    it "get info and allocate" $ do
+      (free, total) <- hipMemGetInfo
+      total `shouldSatisfy` (> 0)
+      free `shouldSatisfy` (\v -> v < total && v > 0)
+
+      withHipDeviceMem 4 $ \_ -> do
+        (free1, total1) <- hipMemGetInfo
+        total1 `shouldBe` total
+        free1 `shouldSatisfy` (\v -> v < free && v > 0)
+
   describe "array" $ do
     let asInt a = fromIntegral a :: Int
     let size = [8,128,1024]

@@ -12,6 +12,8 @@ module ROCm.HIP (
     hipMemcpyDtoH,
     hipMemcpyDtoD,
     hipMemcpyWithStream,
+    hipMemGetInfo,
+    hipMemPtrGetInfo,
     hipArrayCreate,
     hipStreamCreate,
     hipStreamSynchronize,
@@ -24,7 +26,7 @@ module ROCm.HIP (
     HipArrayDescriptor(..),
     HipMemcpyKind(..),
     withHipDeviceMem,
-    devicePtrAsRaw,
+    Runtime.devicePtrAsRaw,
     HipDeviceptr,
     Dim3(..),
     KernelArg(..),
@@ -34,7 +36,7 @@ import qualified ROCm.HIP.Runtime as Runtime
 import ROCm.HIP.Runtime (HipError(..), HipArrayFormat(..), HipArrayDescriptor(..), HipMemcpyKind(..), HipDeviceptr, Dim3(..))
 import ROCm.HIP.TH
 import Control.Exception (bracket)
-import Foreign.Ptr (Ptr, castPtr, nullPtr)
+import Foreign.Ptr (castPtr, nullPtr)
 import Foreign.C.Types (CSize)
 import Foreign.Storable
 import Data.ByteString (ByteString)
@@ -54,22 +56,19 @@ hipMalloc size = do
   ptr <- hipMallocRaw size
   return $ Runtime.HipDeviceptr $ castPtr ptr
 
-$(checked 'Runtime.hipFreeRaw)
-
-hipFree :: Runtime.HipDeviceptr -> IO ()
-hipFree = hipFreeRaw . devicePtrAsRaw
+$(checked 'Runtime.hipFree)
 
 withHipDeviceMem :: CSize -> (Runtime.HipDeviceptr -> IO a) -> IO a
 withHipDeviceMem size = bracket (hipMalloc size) (hipFree)
-
-devicePtrAsRaw :: Runtime.HipDeviceptr -> Ptr ()
-devicePtrAsRaw (Runtime.HipDeviceptr ptr) = castPtr ptr
 
 $(checked 'Runtime.hipMemcpy)
 $(checked 'Runtime.hipMemcpyWithStream)
 $(checked 'Runtime.hipMemcpyHtoD)
 $(checked 'Runtime.hipMemcpyDtoH)
 $(checked 'Runtime.hipMemcpyDtoD)
+$(checked 'Runtime.hipMemGetInfo)
+$(checked 'Runtime.hipMemPtrGetInfo)
+
 $(checked 'Runtime.hipArrayCreate)
 
 $(checked 'Runtime.hipStreamCreate)
