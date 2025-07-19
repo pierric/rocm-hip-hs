@@ -2,8 +2,10 @@ module MemSpec where
 
 import Control.Monad
 import Data.Int
+import Data.Word
 import Foreign.Marshal.Utils
 import Foreign.Marshal.Alloc
+import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
 import Text.Printf
@@ -55,6 +57,65 @@ spec = do
               hipStreamSynchronize stream
               val <- peek hptr2
               (val :: Int32) `shouldBe` 999
+
+  describe "memory set" $ do
+    it "set d8" $ do
+      withHipDeviceMem 4 $ \dptr -> do
+        hipMemsetD8 dptr 44 2
+        allocaBytes 4 $ \hptr -> do
+          hipMemcpyDtoH (castPtr hptr) dptr 4
+          [v0, v1, _, _] <- peekArray 4 hptr
+          (v0 :: Word8) `shouldBe` 44
+          (v1 :: Word8) `shouldBe` 44
+
+    it "set d16" $ do
+      withHipDeviceMem 4 $ \dptr -> do
+        hipMemsetD16 dptr 4444 2
+        allocaBytes 4 $ \hptr -> do
+          hipMemcpyDtoH (castPtr hptr) dptr 4
+          [v0, v1] <- peekArray 2 hptr
+          (v0 :: Word16) `shouldBe` 4444
+          (v1 :: Word16) `shouldBe` 4444
+
+    it "set d32" $ do
+      withHipDeviceMem 4 $ \dptr -> do
+        hipMemsetD32 dptr 44444444 1
+        allocaBytes 4 $ \hptr -> do
+          hipMemcpyDtoH (castPtr hptr) dptr 4
+          v0 <- peek hptr
+          (v0 :: Word32) `shouldBe` 44444444
+
+    it "set d8 async" $ do
+      stream <- hipStreamCreate
+      withHipDeviceMem 4 $ \dptr -> do
+        hipMemsetD8Async dptr 44 2 (Just stream)
+        hipStreamSynchronize stream
+        allocaBytes 4 $ \hptr -> do
+          hipMemcpyDtoH (castPtr hptr) dptr 4
+          [v0, v1, _, _] <- peekArray 4 hptr
+          (v0 :: Word8) `shouldBe` 44
+          (v1 :: Word8) `shouldBe` 44
+
+    it "set d16 async" $ do
+      stream <- hipStreamCreate
+      withHipDeviceMem 4 $ \dptr -> do
+        hipMemsetD16Async dptr 4444 2 (Just stream)
+        hipStreamSynchronize stream
+        allocaBytes 4 $ \hptr -> do
+          hipMemcpyDtoH (castPtr hptr) dptr 4
+          [v0, v1] <- peekArray 2 hptr
+          (v0 :: Word16) `shouldBe` 4444
+          (v1 :: Word16) `shouldBe` 4444
+
+    it "set d32 async" $ do
+      stream <- hipStreamCreate
+      withHipDeviceMem 4 $ \dptr -> do
+        hipMemsetD32Async dptr 44444444 1 (Just stream)
+        hipStreamSynchronize stream
+        allocaBytes 4 $ \hptr -> do
+          hipMemcpyDtoH (castPtr hptr) dptr 4
+          v0 <- peek hptr
+          (v0 :: Word32) `shouldBe` 44444444
 
   describe "memory info" $ do
     it "get info and allocate" $ do

@@ -12,6 +12,12 @@ module ROCm.HIP (
     hipMemcpyDtoH,
     hipMemcpyDtoD,
     hipMemcpyWithStream,
+    hipMemsetD8,
+    hipMemsetD8Async,
+    hipMemsetD16,
+    hipMemsetD16Async,
+    hipMemsetD32,
+    hipMemsetD32Async,
     hipMemGetInfo,
     hipMemPtrGetInfo,
     hipArrayCreate,
@@ -66,6 +72,12 @@ $(checked 'Runtime.hipMemcpyWithStream)
 $(checked 'Runtime.hipMemcpyHtoD)
 $(checked 'Runtime.hipMemcpyDtoH)
 $(checked 'Runtime.hipMemcpyDtoD)
+$(checked 'Runtime.hipMemsetD8)
+$(checked 'Runtime.hipMemsetD8Async)
+$(checked 'Runtime.hipMemsetD16)
+$(checked 'Runtime.hipMemsetD16Async)
+$(checked 'Runtime.hipMemsetD32)
+$(checked 'Runtime.hipMemsetD32Async)
 $(checked 'Runtime.hipMemGetInfo)
 $(checked 'Runtime.hipMemPtrGetInfo)
 

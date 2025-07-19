@@ -113,6 +113,24 @@ deriving instance Storable HipDeviceptr
 {#fun hipMemcpyDtoD as ^
   {`HipDeviceptr', `HipDeviceptr', `CSize'} -> `HipError'#} 
 
+{#fun hipMemsetD8 as ^
+  {`HipDeviceptr', id `CUChar', `CSize'} -> `HipError'#} 
+
+{#fun hipMemsetD8Async as ^
+  {`HipDeviceptr', id `CUChar', `CSize', withMaybeHipStream* `Maybe HipStream'} -> `HipError'#} 
+
+{#fun hipMemsetD16 as ^
+  {`HipDeviceptr', id `CUShort', `CSize'} -> `HipError'#} 
+
+{#fun hipMemsetD16Async as ^
+  {`HipDeviceptr', id `CUShort', `CSize', withMaybeHipStream* `Maybe HipStream'} -> `HipError'#}
+
+{#fun hipMemsetD32 as ^
+  {`HipDeviceptr', id `CInt', `CSize'} -> `HipError'#} 
+
+{#fun hipMemsetD32Async as ^
+  {`HipDeviceptr', id `CInt', `CSize', withMaybeHipStream* `Maybe HipStream'} -> `HipError'#}
+
 {#fun hipMemPtrGetInfo as ^
   {devicePtrAsRaw `HipDeviceptr', alloca- `CSize' peek*} -> `HipError'#} 
 
@@ -167,8 +185,13 @@ peekHipObject finalizer wrapper ptr = do
   p <- C2HSImp.newForeignPtr finalizer p
   return $ wrapper p
 
+peekHipModule :: Ptr (Ptr HipModule) -> IO HipModule
 peekHipModule = peekHipObject hipModuleUnload HipModule
+
+peekHipStream :: Ptr (Ptr HipStream) -> IO HipStream
 peekHipStream = peekHipObject hipStreamDestroy HipStream
+
+peekHipArray :: Ptr (Ptr HipArray) -> IO HipArray
 peekHipArray = peekHipObject hipArrayDestroy HipArray
 
 withMaybeHipStream :: Maybe HipStream -> (Ptr HipStream -> IO a) -> IO a
