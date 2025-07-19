@@ -92,8 +92,11 @@ deriving instance Storable HipDeviceptr
 {#fun hipDeviceSynchronize as ^
   {} -> `HipError'#} 
 
-{#fun hipMalloc as hipMallocRaw
-  {alloca- `Ptr ()' peek*, `CSize'} -> `HipError'#} 
+{#fun hipMalloc as hipMalloc
+  {alloca- `HipDeviceptr' peekDeviceptr*, `CSize'} -> `HipError'#} 
+
+{#fun hipMallocAsync as hipMallocAsync
+  {alloca- `HipDeviceptr' peekDeviceptr*, `CSize', `HipStream'} -> `HipError'#} 
 
 {#fun hipFree as hipFree
   {devicePtrAsRaw `HipDeviceptr'} -> `HipError'#} 
@@ -209,6 +212,10 @@ withParamConfig argptr argsize act = with argsize $ \argsizeptr -> do
       bs = toByteString $ mconcat $ map fromStorable comps
   unsafeUseAsCString bs (act . castPtr)
 
+peekDeviceptr :: Ptr (Ptr ()) -> IO HipDeviceptr
+peekDeviceptr pptr = do
+  p <- peek pptr
+  return $ HipDeviceptr $ castPtr p
 
 devicePtrAsRaw :: HipDeviceptr -> Ptr ()
 devicePtrAsRaw (HipDeviceptr ptr) = castPtr ptr

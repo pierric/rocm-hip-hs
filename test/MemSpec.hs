@@ -23,6 +23,12 @@ spec = do
       ptr <- hipMalloc 1000000
       hipFree ptr
 
+    it "allocate async/free" $ do
+      stream <- hipStreamCreate
+      ptr <- hipMallocAsync 100 stream
+      hipStreamSynchronize stream
+      hipFree ptr
+
   describe "memory copy host <> device" $ do
     it "host >> device >> host" $ do
       withHipDeviceMem 4 $ \dptr -> do

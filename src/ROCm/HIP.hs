@@ -6,6 +6,7 @@ module ROCm.HIP (
     hipSetDevice,
     hipDeviceSynchronize,
     hipMalloc,
+    hipMallocAsync,
     hipFree,
     hipMemcpy,
     hipMemcpyHtoD,
@@ -55,13 +56,8 @@ $(checked 'Runtime.hipGetDevice)
 $(checked 'Runtime.hipSetDevice)
 $(checked 'Runtime.hipDeviceSynchronize)
 
-$(checked 'Runtime.hipMallocRaw)
-
-hipMalloc :: CSize -> IO Runtime.HipDeviceptr
-hipMalloc size = do
-  ptr <- hipMallocRaw size
-  return $ Runtime.HipDeviceptr $ castPtr ptr
-
+$(checked 'Runtime.hipMalloc)
+$(checked 'Runtime.hipMallocAsync)
 $(checked 'Runtime.hipFree)
 
 withHipDeviceMem :: CSize -> (Runtime.HipDeviceptr -> IO a) -> IO a
