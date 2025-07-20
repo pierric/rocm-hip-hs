@@ -22,7 +22,9 @@ jobs:
           exit 1
         fi
         ls /opt/rocm
-
+    
+    - uses: actions/checkout@v4
+    
     - name: Install dependencies
       run: |
         ghcup run --cabal 3.14 --ghc 9.12 cabal -- build --only-dependencies --enable-tests --enable-benchmarks
@@ -30,6 +32,7 @@ jobs:
     - name: Build
       run: |
         ghcup run --cabal 3.14 --ghc 9.12 cabal -- build --enable-tests --enable-benchmarks all
+
     - name: Run tests
       run: |
         ghcup run --cabal 3.14 --ghc 9.12 cabal -- test all
