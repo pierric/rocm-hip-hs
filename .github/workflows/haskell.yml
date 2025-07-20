@@ -12,9 +12,13 @@ permissions:
 jobs:
   build:
 
-    runs-on: self-hosted
+    runs-on: [self-hosted, gpu]
 
     steps:
+    - uses: mrodden/get-rocm@v1
+      with:
+        rocm_version: 6.4.0
+
     - uses: actions/checkout@v4
     - uses: actions/setup-haskell@v1
       with:
