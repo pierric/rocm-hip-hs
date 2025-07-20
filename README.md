@@ -1,3 +1,5 @@
+[![Haskell CI](https://github.com/pierric/rocm-hip-hs/actions/workflows/haskell.yml/badge.svg?branch=main)](https://github.com/pierric/rocm-hip-hs/actions/workflows/haskell.yml)
+
 # Haskell bindings to ROCm HIP Runtime
 This repository provides a Haskell library binding the key interfaces to HIP runtimes.
 
