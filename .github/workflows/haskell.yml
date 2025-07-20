@@ -23,12 +23,6 @@ jobs:
         fi
         ls /opt/rocm
 
-    - uses: actions/checkout@v4
-    - uses: actions/setup-haskell@v1
-      with:
-        ghc-version: '9.12.2'
-        cabal-version: '3.14.2.0'
-
     - name: Cache
       uses: actions/cache@v3
       env:
@@ -41,15 +35,13 @@ jobs:
           ${{ runner.os }}-build-
           ${{ runner.os }}-
 
-    - name: Check
-      run: |
-        which cabal
-        ls /opt
     - name: Install dependencies
       run: |
-        cabal update
-        cabal build --only-dependencies --enable-tests --enable-benchmarks
+        ghcup run --cabal 3.14 --ghc 9.12 cabal -- build --only-dependencies --enable-tests --enable-benchmarks
+        
     - name: Build
-      run: cabal build --enable-tests --enable-benchmarks all
+      run: |
+        ghcup run --cabal 3.14 --ghc 9.12 cabal -- build --enable-tests --enable-benchmarks all
     - name: Run tests
-      run: cabal test all
+      run: |
+        ghcup run --cabal 3.14 --ghc 9.12 cabal -- test all
