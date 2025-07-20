@@ -1,4 +1,4 @@
-#include "hip_runtime_api.h"
+#include "hip/hip_runtime_api.h"
 
 hipError_t hipLaunchKernel_wrapped(const void *function_address,
                                    dim3 *numBlocks, dim3 *dimBlocks,
