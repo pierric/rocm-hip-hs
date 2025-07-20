@@ -15,9 +15,13 @@ jobs:
     runs-on: [self-hosted, gpu]
 
     steps:
-    - uses: mrodden/get-rocm@v1
-      with:
-        rocm_version: 6.4.0
+    - name: Check if rocm exists
+      run: |
+        if [ ! -d "/opt/rocm" ]; then
+          echo "ROCm not installed."
+          exit 1
+        fi
+        ls /opt/rocm
 
     - uses: actions/checkout@v4
     - uses: actions/setup-haskell@v1
