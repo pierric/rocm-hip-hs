@@ -23,18 +23,6 @@ jobs:
         fi
         ls /opt/rocm
 
-    - name: Cache
-      uses: actions/cache@v3
-      env:
-        cache-name: cache-cabal
-      with:
-        path: ~/.cabal
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
-        restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-          ${{ runner.os }}-build-
-          ${{ runner.os }}-
-
     - name: Install dependencies
       run: |
         ghcup run --cabal 3.14 --ghc 9.12 cabal -- build --only-dependencies --enable-tests --enable-benchmarks
