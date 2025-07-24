@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.Vector.HIP.Mutable where
 
-import Prelude (IO, Int, Bool(..), (==), (*), (-), ($), undefined, Monad(..), Maybe(..), fromIntegral, min, max, fmap, otherwise)
+import Prelude (IO, Int, Bool(..), (==), (*), (-), ($), (.), undefined, Monad(..), Maybe(..), fromIntegral, min, max, fmap, otherwise)
 import Data.Vector.Internal.Check
 import qualified Data.Vector.Storable.Mutable as VSM
 import Control.Monad.Primitive (PrimMonad, PrimState, unsafePrimToPrim)
@@ -15,6 +15,9 @@ data MVector s a = MVector {-# UNPACK #-} !Int
                            {-# UNPACK #-} !(ForeignPtr HipDeviceptr)
 
 type IOVector a = MVector (PrimState IO) a
+
+unsafeWith :: IOVector a -> (HipDeviceptr -> IO b) -> IO b
+unsafeWith (MVector _ fptr) act = withForeignPtr fptr $ act . HipDeviceptr
 
 unsafeSlice :: forall s a. Storable a => Int -> Int -> MVector s a -> MVector s a
 unsafeSlice i n (MVector _ fptr) = MVector n (plusForeignPtr fptr offset)
