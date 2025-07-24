@@ -34,7 +34,9 @@ module ROCm.HIP (
     HipMemcpyKind(..),
     withHipDeviceMem,
     Runtime.devicePtrAsRaw,
-    HipDeviceptr,
+    Runtime.hipFreeAsFunPtr,
+    Runtime.advanceDeviceptr,
+    HipDeviceptr(..),
     Dim3(..),
     KernelArg(..),
 ) where

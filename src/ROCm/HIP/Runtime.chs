@@ -222,3 +222,6 @@ devicePtrAsRaw (HipDeviceptr ptr) = castPtr ptr
 
 unsafeRawAsDeviceptr :: Ptr () -> HipDeviceptr
 unsafeRawAsDeviceptr ptr = HipDeviceptr (castPtr ptr)
+
+advanceDeviceptr :: Int -> HipDeviceptr -> HipDeviceptr
+advanceDeviceptr n (HipDeviceptr p) = HipDeviceptr (plusPtr p n)
