@@ -1,10 +1,10 @@
 module ModuleSpec where
 
 import Control.Monad
-import Test.Hspec
+import ROCm.HIP
 import System.Posix.Files (fileExist)
 import System.Process (callCommand)
-import ROCm.HIP
+import Test.Hspec
 
 kernelFile :: String
 kernelFile = "test/saxpy.hsaco"
@@ -20,5 +20,3 @@ ensureKernelCompiled = do
   exist <- fileExist kernelFile
   when (not exist) $ do
     callCommand "hipcc -O3 --genco --offload-arch=gfx1100 test/saxpy.hip -o test/saxpy.hsaco"
-  
-

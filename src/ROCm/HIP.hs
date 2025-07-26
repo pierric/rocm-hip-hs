@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module ROCm.HIP (
-    hipGetDeviceCount,
+module ROCm.HIP
+  ( hipGetDeviceCount,
     hipGetDevice,
     hipSetDevice,
     hipDeviceSynchronize,
@@ -28,30 +28,31 @@ module ROCm.HIP (
     hipModuleGetFunction,
     hipModuleLaunchKernel,
     hipLaunchKernel,
-    HipError(..),
-    HipArrayFormat(..),
-    HipArrayDescriptor(..),
-    HipMemcpyKind(..),
+    HipError (..),
+    HipArrayFormat (..),
+    HipArrayDescriptor (..),
+    HipMemcpyKind (..),
     withHipDeviceMem,
     Runtime.devicePtrAsRaw,
     Runtime.hipFreeAsFunPtr,
     Runtime.advanceDeviceptr,
-    HipDeviceptr(..),
-    Dim3(..),
-    KernelArg(..),
-) where
+    HipDeviceptr (..),
+    Dim3 (..),
+    KernelArg (..),
+  )
+where
 
-import qualified ROCm.HIP.Runtime as Runtime
-import ROCm.HIP.Runtime (HipError(..), HipArrayFormat(..), HipArrayDescriptor(..), HipMemcpyKind(..), HipDeviceptr, Dim3(..))
-import ROCm.HIP.TH
+import Blaze.ByteString.Builder (fromStorable, fromWord8, toByteString)
 import Control.Exception (bracket)
-import Foreign.Ptr (castPtr, nullPtr)
-import Foreign.C.Types (CSize)
-import Foreign.Storable
 import Data.ByteString (ByteString)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
-import Blaze.ByteString.Builder (toByteString, fromStorable, fromWord8)
 import Data.Int
+import Foreign.C.Types (CSize)
+import Foreign.Ptr (castPtr, nullPtr)
+import Foreign.Storable
+import ROCm.HIP.Runtime (Dim3 (..), HipArrayDescriptor (..), HipArrayFormat (..), HipDeviceptr, HipError (..), HipMemcpyKind (..))
+import qualified ROCm.HIP.Runtime as Runtime
+import ROCm.HIP.TH
 
 $(checked 'Runtime.hipGetDeviceCount)
 $(checked 'Runtime.hipGetDevice)
@@ -96,25 +97,25 @@ pack :: [KernelArg] -> ByteString
 pack args = do
   let alignmentFinal = foldr lcm 1 (map alignmentK args)
   toByteString $ mconcat $ concatMap (build alignmentFinal) args
-
   where
-  alignmentK (KI v) = alignment v
-  alignmentK (KF v) = alignment v
-  alignmentK (KP v) = alignment v
+    alignmentK (KI v) = alignment v
+    alignmentK (KF v) = alignment v
+    alignmentK (KP v) = alignment v
 
-  build a (KI v) = [fromStorable v] ++ padding (a - sizeOf v)
-  build a (KF v) = [fromStorable v] ++ padding (a - sizeOf v)
-  build a (KP v) = [fromStorable v] ++ padding (a - sizeOf v)
+    build a (KI v) = [fromStorable v] ++ padding (a - sizeOf v)
+    build a (KF v) = [fromStorable v] ++ padding (a - sizeOf v)
+    build a (KP v) = [fromStorable v] ++ padding (a - sizeOf v)
 
-  padding n = replicate n (fromWord8 0)
+    padding n = replicate n (fromWord8 0)
 
-hipModuleLaunchKernel :: Runtime.HipFunction
-                      -> Dim3
-                      -> Dim3
-                      -> Int
-                      -> Maybe Runtime.HipStream
-                      -> [KernelArg]
-                      -> IO ()
+hipModuleLaunchKernel ::
+  Runtime.HipFunction ->
+  Dim3 ->
+  Dim3 ->
+  Int ->
+  Maybe Runtime.HipStream ->
+  [KernelArg] ->
+  IO ()
 hipModuleLaunchKernel func grid block shm stream args = do
   let Dim3 gridX gridY gridZ = grid
       Dim3 blockX blockY blockZ = block

@@ -1,7 +1,7 @@
 module MiscSpec where
 
-import Test.Hspec
 import ROCm.HIP
+import Test.Hspec
 
 spec :: Spec
 spec = do
@@ -19,3 +19,4 @@ spec = do
 
     it "sync" $ do
       hipDeviceSynchronize
+

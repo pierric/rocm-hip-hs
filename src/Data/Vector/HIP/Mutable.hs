@@ -1,25 +1,28 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+
 module Data.Vector.HIP.Mutable where
 
-import Prelude (IO, Int, Bool(..), (==), (*), (-), ($), (.), undefined, Monad(..), Maybe(..), fromIntegral, min, max, fmap, otherwise)
+import Control.Monad.Primitive (PrimMonad, PrimState, unsafePrimToPrim)
 import Data.Vector.Internal.Check
 import qualified Data.Vector.Storable.Mutable as VSM
-import Control.Monad.Primitive (PrimMonad, PrimState, unsafePrimToPrim)
-import Foreign.Storable
 import Foreign.ForeignPtr
-import Foreign.Ptr
 import Foreign.Marshal.Alloc (allocaBytes)
+import Foreign.Ptr
+import Foreign.Storable
 import ROCm.HIP
+import Prelude (Bool (..), IO, Int, Maybe (..), Monad (..), fmap, fromIntegral, max, min, otherwise, undefined, ($), (*), (-), (.), (==))
 
-data MVector s a = MVector {-# UNPACK #-} !Int
-                           {-# UNPACK #-} !(ForeignPtr HipDeviceptr)
+data MVector s a
+  = MVector
+      {-# UNPACK #-} !Int
+      {-# UNPACK #-} !(ForeignPtr HipDeviceptr)
 
 type IOVector a = MVector (PrimState IO) a
 
 unsafeWith :: IOVector a -> (HipDeviceptr -> IO b) -> IO b
 unsafeWith (MVector _ fptr) act = withForeignPtr fptr $ act . HipDeviceptr
 
-unsafeSlice :: forall s a. Storable a => Int -> Int -> MVector s a -> MVector s a
+unsafeSlice :: forall s a. (Storable a) => Int -> Int -> MVector s a -> MVector s a
 unsafeSlice i n (MVector _ fptr) = MVector n (plusForeignPtr fptr offset)
   where
     offset = i * sizeOf (undefined :: a)
@@ -45,7 +48,7 @@ copyToDevice (VSM.MVector n fhptr) = do
   vhip@(MVector _ fdptr) <- new n
   unsafePrimToPrim $ do
     let bytes = sizeOf (undefined :: a) * n
-    withForeignPtr fdptr $ \dptr -> 
+    withForeignPtr fdptr $ \dptr ->
       withForeignPtr fhptr $ \hptr ->
         hipMemcpyHtoD (HipDeviceptr dptr) (castPtr hptr) (fromIntegral bytes)
   return vhip
@@ -55,7 +58,7 @@ copyToHost (MVector n fdptr) = do
   vcpu@(VSM.MVector _ fhptr) <- VSM.new n
   unsafePrimToPrim $ do
     let bytes = sizeOf (undefined :: a) * n
-    withForeignPtr fdptr $ \dptr -> 
+    withForeignPtr fdptr $ \dptr ->
       withForeignPtr fhptr $ \hptr ->
         hipMemcpyDtoH (castPtr hptr) (HipDeviceptr dptr) (fromIntegral bytes)
   return vcpu
@@ -70,7 +73,7 @@ replicateM n mv = do
   vcpu <- VSM.replicateM n mv
   copyToDevice vcpu
 
-generate :: (PrimMonad m, Storable a) => Int -> (Int -> a) -> m (MVector (PrimState m) a) 
+generate :: (PrimMonad m, Storable a) => Int -> (Int -> a) -> m (MVector (PrimState m) a)
 generate n gen = do
   vcpu <- VSM.generate n gen
   copyToDevice vcpu
@@ -85,8 +88,8 @@ clone (MVector n fiptr) = unsafePrimToPrim $ do
   let bytes = sizeOf (undefined :: a) * n
   HipDeviceptr optr <- hipMalloc (fromIntegral bytes)
 
-  withForeignPtr fiptr $ \iptr -> 
-    hipMemcpyDtoD (HipDeviceptr optr)  (HipDeviceptr iptr) (fromIntegral bytes)
+  withForeignPtr fiptr $ \iptr ->
+    hipMemcpyDtoD (HipDeviceptr optr) (HipDeviceptr iptr) (fromIntegral bytes)
 
   foptr <- newForeignPtr hipFreeAsFunPtr optr
   return $ MVector n foptr
@@ -95,47 +98,49 @@ read :: (PrimMonad m, Storable a) => MVector (PrimState m) a -> Int -> m a
 read v i = checkIndex Bounds i (length v) $ unsafeRead v i
 
 readMaybe :: (PrimMonad m, Storable a) => MVector (PrimState m) a -> Int -> m (Maybe a)
-readMaybe v i | i `inRange` (length v) = fmap Just (unsafeRead v i)
-              | otherwise = return Nothing
+readMaybe v i
+  | i `inRange` (length v) = fmap Just (unsafeRead v i)
+  | otherwise = return Nothing
 
-length :: Storable a => MVector s a -> Int
+length :: (Storable a) => MVector s a -> Int
 length (MVector s _) = s
 
-null :: Storable a => MVector s a -> Bool
+null :: (Storable a) => MVector s a -> Bool
 null (MVector s _) = s == 0
 
-slice :: Storable a
-      => Int  -- ^ @i@ starting index
-      -> Int  -- ^ @n@ length
-      -> MVector s a
-      -> MVector s a
-slice i n v = checkSlice Bounds i n (length v) $ unsafeSlice i n v 
+slice ::
+  (Storable a) =>
+  Int ->
+  Int ->
+  MVector s a ->
+  MVector s a
+slice i n v = checkSlice Bounds i n (length v) $ unsafeSlice i n v
 
-take :: Storable a
-     => Int -- ^ @n@ length
-     -> MVector s a
-     -> MVector s a
+take ::
+  (Storable a) =>
+  Int ->
+  MVector s a ->
+  MVector s a
 take n v = unsafeSlice 0 (min (max n 0) (length v)) v
 
-
-drop :: Storable a => Int -> MVector s a -> MVector s a
+drop :: (Storable a) => Int -> MVector s a -> MVector s a
 drop n v = unsafeSlice (min m n') (max 0 (m - n')) v
   where
     n' = max n 0
-    m  = length v
+    m = length v
 
-splitAt :: Storable a => Int -> MVector s a -> (MVector s a, MVector s a)
-splitAt n v = ( unsafeSlice 0 m v
-              , unsafeSlice m (max 0 (len - n')) v
-              )
-    where
-      m   = min n' len
-      n'  = max n 0
-      len = length v
+splitAt :: (Storable a) => Int -> MVector s a -> (MVector s a, MVector s a)
+splitAt n v =
+  ( unsafeSlice 0 m v,
+    unsafeSlice m (max 0 (len - n')) v
+  )
+  where
+    m = min n' len
+    n' = max n 0
+    len = length v
 
-init :: Storable a => MVector s a -> MVector s a
+init :: (Storable a) => MVector s a -> MVector s a
 init v = slice 0 (length v - 1) v
 
-tail :: Storable a => MVector s a -> MVector s a
+tail :: (Storable a) => MVector s a -> MVector s a
 tail v = slice 1 (length v - 1) v
-

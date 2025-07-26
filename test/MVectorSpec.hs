@@ -1,10 +1,9 @@
 module MVectorSpec where
 
 import Control.Monad
-import Test.Hspec
 import qualified Data.Vector.HIP.Mutable as MHV
 import qualified Data.Vector.Storable as VS
-
+import Test.Hspec
 
 spec :: Spec
 spec = do
@@ -24,10 +23,10 @@ spec = do
 
   describe "read/write" $ do
     it "read" $ do
-      v <- MHV.generate 4 (\i -> i * i):: IO (MHV.IOVector Int)
-      forM_ [0..3] $ \i -> do
+      v <- MHV.generate 4 (\i -> i * i) :: IO (MHV.IOVector Int)
+      forM_ [0 .. 3] $ \i -> do
         x <- MHV.read v i
-        x `shouldBe` (i*i)
+        x `shouldBe` (i * i)
 
       x <- MHV.readMaybe v 2
       x `shouldBe` Just 4
@@ -46,7 +45,7 @@ spec = do
       MHV.null v `shouldBe` True
 
     it "split" $ do
-      v <- MHV.generate 5 (\i -> i * i):: IO (MHV.IOVector Int)
+      v <- MHV.generate 5 (\i -> i * i) :: IO (MHV.IOVector Int)
       let (v1, v2) = MHV.splitAt 3 v
       w1 <- VS.freeze =<< MHV.copyToHost v1
       w2 <- VS.freeze =<< MHV.copyToHost v2
@@ -55,39 +54,39 @@ spec = do
       VS.toList w2 `shouldBe` [9, 16]
 
     it "take" $ do
-      v <- MHV.generate 4 (\i -> i * 2):: IO (MHV.IOVector Int)
+      v <- MHV.generate 4 (\i -> i * 2) :: IO (MHV.IOVector Int)
 
-      let vars = [(0, []), (3, [0,2,4]), (4, [0,2,4,6]), (7, [0,2,4,6])]
+      let vars = [(0, []), (3, [0, 2, 4]), (4, [0, 2, 4, 6]), (7, [0, 2, 4, 6])]
 
       forM_ vars $ \(n, o) -> do
         let v1 = MHV.take n v
         w1 <- VS.freeze =<< MHV.copyToHost v1
         VS.toList w1 `shouldBe` o
- 
-    it "drop" $ do
-      v <- MHV.generate 4 (\i -> i * 2):: IO (MHV.IOVector Int)
 
-      let vars = [(0, [0,2,4,6]), (3, [6]), (4, []), (7, [])]
+    it "drop" $ do
+      v <- MHV.generate 4 (\i -> i * 2) :: IO (MHV.IOVector Int)
+
+      let vars = [(0, [0, 2, 4, 6]), (3, [6]), (4, []), (7, [])]
 
       forM_ vars $ \(n, o) -> do
         let v1 = MHV.drop n v
         w1 <- VS.freeze =<< MHV.copyToHost v1
         VS.toList w1 `shouldBe` o
- 
+
     it "slice" $ do
-      v <- MHV.generate 5 (\i -> i * 2):: IO (MHV.IOVector Int)
+      v <- MHV.generate 5 (\i -> i * 2) :: IO (MHV.IOVector Int)
       let v1 = MHV.slice 2 2 v
       w1 <- VS.freeze =<< MHV.copyToHost v1
-      VS.toList w1 `shouldBe` [4,6]
+      VS.toList w1 `shouldBe` [4, 6]
 
     it "init" $ do
-      v <- MHV.generate 5 (\i -> i * 2):: IO (MHV.IOVector Int)
+      v <- MHV.generate 5 (\i -> i * 2) :: IO (MHV.IOVector Int)
       let v1 = MHV.init v
       w1 <- VS.freeze =<< MHV.copyToHost v1
-      VS.toList w1 `shouldBe` [0,2,4,6]
-    
+      VS.toList w1 `shouldBe` [0, 2, 4, 6]
+
     it "tail" $ do
-      v <- MHV.generate 5 (\i -> i * 2):: IO (MHV.IOVector Int)
+      v <- MHV.generate 5 (\i -> i * 2) :: IO (MHV.IOVector Int)
       let v1 = MHV.tail v
       w1 <- VS.freeze =<< MHV.copyToHost v1
-      VS.toList w1 `shouldBe` [2,4,6,8]
+      VS.toList w1 `shouldBe` [2, 4, 6, 8]
