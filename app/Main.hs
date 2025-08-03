@@ -1,41 +1,38 @@
 module Main where
 
-import Control.Monad (when)
+import Control.Monad.IO.Class (liftIO)
 import qualified Data.Vector.HIP.Mutable as VHM
 import qualified Data.Vector.Storable as V
 import Foreign.C.Types
 import ROCm.HIP
-import System.Posix.Files (fileExist)
+import ROCm.HIP.Function
 
 kernelFile :: String
 kernelFile = "test/saxpy.hsaco"
 
-main :: IO ()
-main = do
-  exist <- fileExist kernelFile
-  when (not exist) $
-    error $
-      "Kernel file '"
-        ++ kernelFile
-        ++ "' doesn't exist. Compile it with the command: \n"
-        ++ "  hipcc -O3 --genco --offload-arch=gfx1100 test/saxpy.hip -o test/saxpy.hsaco"
+saxpy :: String -> String -> Dim3 -> Dim3 -> Float -> HipDeviceptr -> HipDeviceptr -> Int -> Hip IO ()
+saxpy kernel name grid block a v1 v2 sz = do
+  let args = [KF a, KP v1, KP v2, KI (fromIntegral sz)]
+  fun <- loadFunction kernel name
+  liftIO $ hipModuleLaunchKernel fun grid block 0 Nothing args
 
+main :: IO ()
+main = runHip $ do
   let size = 1000
   let block_size = 256 :: CUInt
   let grid_size = (fromIntegral size + 255) `div` block_size
 
   -- input 1: 1,2,3,4, ...
   -- input 2: 1,3,5,7, ...
-  hx <- VHM.generate size ((+ 1) . fromIntegral) :: IO (VHM.IOVector Float)
-  hy <- VHM.generate size ((+ 1) . (* 2) . fromIntegral) :: IO (VHM.IOVector Float)
+  hx <- liftIO $ VHM.generate size ((+ 1) . fromIntegral)
+  hy <- liftIO $ VHM.generate size ((+ 1) . (* 2) . fromIntegral)
 
-  mod <- hipModuleLoad kernelFile
-  fun <- hipModuleGetFunction mod "saxpy"
-
-  VHM.unsafeWith hx $ \dx ->
-    VHM.unsafeWith hy $ \dy -> do
+  VHM.unsafeWith (hx :: VHM.IOVector Float) $ \dx ->
+    VHM.unsafeWith (hy :: VHM.IOVector Float) $ \dy -> do
       let args = [KF 2.0, KP dx, KP dy, KI (fromIntegral size)]
-      hipModuleLaunchKernel fun (Dim3 grid_size 1 1) (Dim3 block_size 1 1) 0 Nothing args
-      out <- V.freeze =<< VHM.copyToHost hy
-      -- expected output: 3, 7, 11, 15, 19, ...
-      print $ V.take 10 out
+      saxpy kernelFile "saxpy" (Dim3 grid_size 1 1) (Dim3 block_size 1 1) 2.0 dx dy size
+
+  liftIO $ do
+    out <- V.freeze =<< VHM.copyToHost hy
+    -- expected output: 3, 7, 11, 15, 19, ...
+    print $ V.take 10 out

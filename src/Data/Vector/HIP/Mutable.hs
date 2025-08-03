@@ -1,16 +1,18 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Data.Vector.HIP.Mutable where
 
-import Control.Monad.Primitive (PrimMonad, PrimState, unsafePrimToPrim)
+import Control.Monad.Primitive (PrimMonad, PrimState, RealWorld, ioToPrim, unsafePrimToPrim)
 import Data.Vector.Internal.Check
 import qualified Data.Vector.Storable.Mutable as VSM
 import Foreign.ForeignPtr
+import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr
 import Foreign.Storable
 import ROCm.HIP
-import Prelude (Bool (..), IO, Int, Maybe (..), Monad (..), fmap, fromIntegral, max, min, otherwise, undefined, ($), (*), (-), (.), (==))
+import Prelude (Bool (..), IO, Int, Maybe (..), Monad (..), fmap, fromIntegral, max, min, otherwise, undefined, ($), (*), (-), (==), type (~))
 
 data MVector s a
   = MVector
@@ -19,8 +21,11 @@ data MVector s a
 
 type IOVector a = MVector (PrimState IO) a
 
-unsafeWith :: IOVector a -> (HipDeviceptr -> IO b) -> IO b
-unsafeWith (MVector _ fptr) act = withForeignPtr fptr $ act . HipDeviceptr
+unsafeWith :: (PrimMonad m, Storable a, PrimState m ~ RealWorld) => MVector (PrimState m) a -> (HipDeviceptr -> m b) -> m b
+unsafeWith (MVector _ fptr) act =
+  act (HipDeviceptr $ unsafeForeignPtrToPtr fptr) >>= \r -> do
+    ioToPrim $ touchForeignPtr fptr
+    return r
 
 unsafeSlice :: forall s a. (Storable a) => Int -> Int -> MVector s a -> MVector s a
 unsafeSlice i n (MVector _ fptr) = MVector n (plusForeignPtr fptr offset)

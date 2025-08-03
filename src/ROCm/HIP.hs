@@ -28,10 +28,12 @@ module ROCm.HIP
     hipModuleGetFunction,
     hipModuleLaunchKernel,
     hipLaunchKernel,
-    HipError (..),
-    HipArrayFormat (..),
-    HipArrayDescriptor (..),
-    HipMemcpyKind (..),
+    Runtime.HipModule,
+    Runtime.HipFunction,
+    Runtime.HipError (..),
+    Runtime.HipArrayFormat (..),
+    Runtime.HipArrayDescriptor (..),
+    Runtime.HipMemcpyKind (..),
     withHipDeviceMem,
     Runtime.devicePtrAsRaw,
     Runtime.hipFreeAsFunPtr,
@@ -50,7 +52,7 @@ import Data.Int
 import Foreign.C.Types (CSize)
 import Foreign.Ptr (castPtr, nullPtr)
 import Foreign.Storable
-import ROCm.HIP.Runtime (Dim3 (..), HipArrayDescriptor (..), HipArrayFormat (..), HipDeviceptr, HipError (..), HipMemcpyKind (..))
+import ROCm.HIP.Runtime (Dim3 (..), HipDeviceptr)
 import qualified ROCm.HIP.Runtime as Runtime
 import ROCm.HIP.TH
 
