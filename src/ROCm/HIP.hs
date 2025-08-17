@@ -34,6 +34,10 @@ module ROCm.HIP
     Runtime.HipArrayFormat (..),
     Runtime.HipArrayDescriptor (..),
     Runtime.HipMemcpyKind (..),
+    hiprtcVersion,
+    hiprtcCreateProgram,
+    hiprtcCompileProgram,
+    hiprtcGetProgramLog,
     withHipDeviceMem,
     Runtime.devicePtrAsRaw,
     Runtime.hipFreeAsFunPtr,
@@ -41,6 +45,8 @@ module ROCm.HIP
     HipDeviceptr (..),
     Dim3 (..),
     KernelArg (..),
+    RTC.HiprtcProgram,
+    RTC.HiprtcResult (..),
   )
 where
 
@@ -49,12 +55,16 @@ import Control.Exception (bracket)
 import Data.ByteString (ByteString)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Int
+import Foreign.C.String (peekCStringLen)
 import Foreign.C.Types (CSize)
+import Foreign.Marshal.Alloc (free, mallocBytes)
 import Foreign.Ptr (castPtr, nullPtr)
 import Foreign.Storable
+import qualified ROCm.HIP.RTC as RTC
 import ROCm.HIP.Runtime (Dim3 (..), HipDeviceptr)
 import qualified ROCm.HIP.Runtime as Runtime
 import ROCm.HIP.TH
+import ROCm.HIP.Utils (withCStringList)
 
 $(checked 'Runtime.hipGetDeviceCount)
 $(checked 'Runtime.hipGetDevice)
@@ -93,6 +103,8 @@ $(checked 'Runtime.hipModuleLaunchKernelRaw)
 
 $(checked 'Runtime.hipLaunchKernel)
 
+$(checked 'RTC.hiprtcVersion)
+
 data KernelArg = KI Int32 | KF Float | KP HipDeviceptr
 
 pack :: [KernelArg] -> ByteString
@@ -124,3 +136,32 @@ hipModuleLaunchKernel func grid block shm stream args = do
   unsafeUseAsCStringLen (pack args) $ \(ptr, len) -> do
     Runtime.withParamConfig (castPtr ptr) len $ \param -> do
       hipModuleLaunchKernelRaw func gridX gridY gridZ blockX blockY blockZ (fromIntegral shm) stream nullPtr param
+
+hiprtcCreateProgram :: String -> String -> [(String, String)] -> IO RTC.HiprtcProgram
+hiprtcCreateProgram name code inc = do
+  let inc_num = fromIntegral $ length inc
+  let (inc_names, inc_headers) = unzip inc
+  withCStringList inc_names $ \pn ->
+    withCStringList inc_headers $ \ph -> do
+      (rc, rt) <- RTC.hiprtcCreateProgram code name inc_num ph pn
+      if (rc == toEnum 0) then return rt else error ("HIP error: " ++ show rc)
+
+hiprtcCompileProgram :: RTC.HiprtcProgram -> [String] -> IO RTC.HiprtcResult
+hiprtcCompileProgram prog options = do
+  let opt_num = fromIntegral $ length options
+  withCStringList options $ \po -> do
+    RTC.hiprtcCompileProgram prog opt_num po
+
+hiprtcGetProgramLog :: RTC.HiprtcProgram -> IO String
+hiprtcGetProgramLog prog = do
+  ret <- RTC.hiprtcGetProgramLogSize prog
+  case ret of
+    (rc, _) | rc /= toEnum 0 -> error ("HIP error: " ++ show rc)
+    (_, 0) -> return ""
+    (_, s) -> do
+      let size = fromIntegral s
+      bracket (mallocBytes size) free $ \buf -> do
+        rc <- RTC.hiprtcGetProgramLog prog buf
+        if (rc /= toEnum 0)
+          then error ("HIP error: " ++ show rc)
+          else peekCStringLen (buf, size)

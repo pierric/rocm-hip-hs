@@ -15,6 +15,8 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen, unsafeUseAsCString)
 import Blaze.ByteString.Builder (toByteString, fromStorable)
 
+import ROCm.HIP.Utils (peekHipObject)
+
 {#typedef size_t CSize#}
 
 {#enum hipError_t as HipError {upcaseFirstLetter} deriving (Eq, Show)#}
@@ -181,12 +183,6 @@ foreign import ccall safe "Internal.chs.h &hipArrayDestroy"
 
 foreign import ccall safe "Internal.chs.h &hipFree"
   hipFreeAsFunPtr :: FunPtr (Ptr HipDeviceptr -> IO ())
-
-peekHipObject :: FunPtr (Ptr a -> IO ()) -> (C2HSImp.ForeignPtr a -> a) -> Ptr (Ptr a) -> IO a
-peekHipObject finalizer wrapper ptr = do
-  p <- peek ptr
-  p <- C2HSImp.newForeignPtr finalizer p
-  return $ wrapper p
 
 peekHipModule :: Ptr (Ptr HipModule) -> IO HipModule
 peekHipModule = peekHipObject hipModuleUnload HipModule

@@ -25,6 +25,8 @@ library
       Data.Vector.HIP.Mutable
     other-modules:
       ROCm.HIP.Runtime,
+      ROCm.HIP.RTC,
+      ROCm.HIP.Utils,
       ROCm.HIP.TH
 
     other-extensions: ForeignFunctionInterface
@@ -41,7 +43,9 @@ library
                       unix
     hs-source-dirs:   src
     default-language: Haskell2010
-    c-sources: cbits/hip_runtime_hs.c
+    c-sources:
+        cbits/hip_runtime_hs.c
+        cbits/hip_rtc_hs.c
     include-dirs:
         cbits
         /opt/rocm/include
@@ -84,7 +88,7 @@ test-suite rocm-hip-test
     hs-source-dirs:   test
 
     main-is:          Spec.hs
-    other-modules:    MemSpec, ModuleSpec, MiscSpec, MVectorSpec
+    other-modules:    MemSpec, ModuleSpec, MiscSpec, MVectorSpec, RTCSpec
 
     build-depends:
         base ^>=4.21.0.0,
